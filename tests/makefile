@@ -3,22 +3,25 @@ CXXFLAGS  := -D_LOG_DEBUG
 LINKFLAGS := -D_THREAD_SAFE
 INCLUDES  := 
 LIBS      := -lpthread
-OBJECTS   := log_level4_traceOn.o logger.o file_change.o
+#OBJECTS  := log_level4_traceOn.o logger.o file_change.o
+EXE       :=    \
+            file_change \
+            level_check
+            
+all:    $(EXE)
 
-log_level4_traceOn: $(OBJECTS)
-	$(CXX) $(LINKFLAGS) $(OBJECTS) -o log_level4_traceOn $(LIBS)
+$(EXE): %:%.o logger.o
+	$(CXX) $(LINKFLAGS) $^ logger.o -o $@ $(LIBS)
 
-file_change: file_change.o logger.o
-	$(CXX) $(LINKFLAGS) logger.o file_change.o -o file_change $(LIBS)
+.c.o : 
+	$(CXX) $(INCLUDES) $(CXXFLAGS) -c $< -o $@
 
-log_level4_traceOn.o: log_level4_traceOn.c
-	$(CXX) $(INCLUDES) $(CXXFLAGS) -c log_level4_traceOn.c -o log_level4_traceOn.o
+logger.o: ../src/logger.c
+	$(CXX) $(CXXFLAGS) -c ../src/logger.c -o logger.o
 
-file_change.o: file_change.c
-	$(CXX) $(INCLUDES) $(CXXFLAGS) -c file_change.c -o file_change.o
+clean   :
+	-rm *.o bin/* out/*
+#adding - infront of rm will ignore error (if file not found)
 
-logger.o: ../logger.c
-	$(CXX) $(CXXFLAGS) -c ../logger.c -o logger.o
-
-clean:
-	rm *.o log_level4_traceOn
+install :
+	-mv $(EXE) bin/

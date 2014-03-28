@@ -1,20 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "../logger.h"
+#include "../src/logger.h"
 
 int main()
 {
-    int msg_count = 0;
-    log_init("logger1.log");
-    log_print(INFO,"----Start log for %s\n",__FILE__ );
-    log_print(0,"Test log message %d level 0\n",++msg_count );
-    log_print(1,"Test log message %d level 1\n",++msg_count );
-    log_print(2,"Test log message %d level 2\n",++msg_count );
-    log_print(3,"Test log message %d level 3\n",++msg_count );
-	log_file_change("logger2.log");
-    log_print(0,"Test log message %d level 0\n",++msg_count );
-    log_print(4,"Test log message %d level 4\n",++msg_count );
-    log_print_debug("Test log message %d level 4\n",++msg_count );
+    log_init("../out/file_change.log");
+    log_print(INFO,"Test log message on file 1\n");
+	log_file_change("../out/file_change.out");
+    log_print(INFO,"Test log message on file 2\n");
     log_exit();
     return 0;
 }
