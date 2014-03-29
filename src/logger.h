@@ -25,7 +25,7 @@ static inline void log_print_debug(char const* fmt, ...)
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     va_list va;
     va_start(va, fmt);
-    vsnprintf(tmp_buffer, LOG_BUFFER_STR_MAX_LEN-1, fmt, va);
+    vsnprintf(tmp_buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     va_end(va);
     log_print(INFO, tmp_buffer);
 #endif

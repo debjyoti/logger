@@ -147,18 +147,23 @@ void log_print(log_level lvl, char const* fmt, ...)
             break;
     }
 
-    /* print variable parameters to va_buffer */
-    int va_buffer_len= LOG_BUFFER_STR_MAX_LEN - prefix_length;
-    char va_buffer[va_buffer_len];
+	/* Print variable parameters to va_buffer. The length of va_buffer
+	   should be MAX_LEN - prefix_length. But malloc and free would be
+	   expensive. So I am using MAX_LEN here, but using MAX_LEN-prefix_length
+	   while doing the strncat. So all good ;-D Could have used VLA. But
+	   VLA internally takes up extra space. So, why bother so much about 10
+	   chars? */
+    char va_buffer[LOG_BUFFER_STR_MAX_LEN];
     va_list va;
     va_start(va, fmt);
-    vsnprintf(va_buffer, va_buffer_len, fmt, va);
+    vsnprintf(va_buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     va_end(va);
 
-    strncat(tmp_buffer, va_buffer, LOG_BUFFER_STR_MAX_LEN);
+    strncat(tmp_buffer, va_buffer, LOG_BUFFER_STR_MAX_LEN-prefix_length);
 
     pthread_mutex_lock(&g_log_buffer_mutex);
-    strcpy(g_log_buffer[g_log_buffer_size], tmp_buffer);
+	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
+			LOG_BUFFER_STR_MAX_LEN);
     g_log_buffer_size++;
     pthread_mutex_unlock(&g_log_buffer_mutex);
 

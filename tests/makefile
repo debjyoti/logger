@@ -1,4 +1,4 @@
-CXX       := xlc
+CXX       := gcc
 CXXFLAGS  := -D_LOG_DEBUG
 LINKFLAGS := -D_THREAD_SAFE
 INCLUDES  := 
@@ -11,7 +11,7 @@ EXE       :=    \
 all:    $(EXE)
 
 $(EXE): %:%.o logger.o
-	$(CXX) $(LINKFLAGS) $^ logger.o -o $@ $(LIBS)
+	$(CXX) $(LINKFLAGS) $^ -o $@ $(LIBS)
 
 .c.o : 
 	$(CXX) $(INCLUDES) $(CXXFLAGS) -c $< -o $@
