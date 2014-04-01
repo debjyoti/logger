@@ -1,4 +1,10 @@
 make clean all install
+if [ $? != 0 ]; then
+    echo
+    echo "ERROR occured during make. ABORTING..."
+    echo
+    exit
+fi
 cd bin/
 echo 
 echo "---Start Tests---"

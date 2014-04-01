@@ -13,6 +13,7 @@
 
 #define LOG_BUFFER_SIZE 1024
 #define LOG_BUFFER_FLUSH_SIZE (0.8 * LOG_BUFFER_SIZE)
+#define _MAX_TIME_STR_LEN 15
 
 #define handle_error_en(en, msg) \
     do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -49,7 +50,11 @@ void* _logger_thread(void * filepath)
 {
     FILE *fp_log;
     int i;
-    char time_str[10];
+    char time_str[_MAX_TIME_STR_LEN];
+    int *exit_status;
+    exit_status = (int *)malloc(sizeof(int));
+    *exit_status = 0;
+
     fp_log = fopen((char*)filepath, "a+");
     if (fp_log==NULL)
     {
@@ -57,7 +62,7 @@ void* _logger_thread(void * filepath)
                 filepath);
         exit(1);
     }
-    _get_current_time(time_str, 10);
+    _get_current_time(time_str, _MAX_TIME_STR_LEN);
     printf("%sLog file %s created.\n", time_str, (char*)filepath);
     while(1)
     {
@@ -82,12 +87,14 @@ void* _logger_thread(void * filepath)
 
         if(g_log_buffer_cond_signal == TERMINATE_THREAD)
         {
-            _get_current_time(time_str, 10);
+            _get_current_time(time_str, _MAX_TIME_STR_LEN);
             printf("%sClosing log file %s\n",time_str,(char*)filepath);
             fclose(fp_log);
             g_log_buffer_cond_signal = NO_SIGNAL;
+            *exit_status = 1;
             pthread_mutex_unlock(&g_log_buffer_mutex);
-            return (void*)NULL;
+            pthread_exit((void*)exit_status);
+            return (void*)0;
         }
         g_log_buffer_cond_signal = NO_SIGNAL;
         pthread_mutex_unlock(&g_log_buffer_mutex);
@@ -98,11 +105,17 @@ void* _logger_thread(void * filepath)
 
 static void _create_thread(char* filename)
 {
-    int s;
-    s = pthread_create(&g_logger_thread_id, NULL,
+    int rc;
+    char time_str[_MAX_TIME_STR_LEN];
+    rc = pthread_create(&g_logger_thread_id, NULL,
             &_logger_thread,(void *) filename);
-    if(s != 0)
-        handle_error_en(s, "pthread_create");
+    if(rc != 0)
+        handle_error_en(rc, "pthread_create");
+    else
+    {
+        _get_current_time(time_str, _MAX_TIME_STR_LEN);
+        printf("%sNew logger thread created\n", time_str);
+    }
 }
 
 int log_enable_trace()
@@ -191,8 +204,19 @@ void log_print(log_level lvl, char const* fmt, ...)
 
 void log_exit()
 {
+    int *thread_return_status;
+    int rc = 1;
+    char time_str[_MAX_TIME_STR_LEN];
     _signal_logger_thread(TERMINATE_THREAD);
-    pthread_join(g_logger_thread_id, NULL);
+    rc = pthread_join(g_logger_thread_id,
+            (void **)&thread_return_status);
+    _get_current_time(time_str, _MAX_TIME_STR_LEN);
+    if(0==rc && thread_return_status && 1 == (*thread_return_status) )
+        printf("%sLogger thread terminated successfully\n", time_str);
+    else
+        printf("%sERROR in logger thread termination. Ignored.\n",
+                time_str);
+    free(thread_return_status); 
 }
 
 void log_file_change(char* new_filename)
