@@ -32,11 +32,24 @@ enum_signal         g_log_buffer_cond_signal = NO_SIGNAL;
 enum_bool           g_trace_on = NO;
 enum_bool           g_initialized = NO;
 
+static int _get_current_time(char* str, int max_len)
+{
+    struct timeval *epoch_time;
+    struct tm *local_time;
+    int time_str_len;
+    epoch_time = (struct timeval *)malloc(sizeof(struct timeval));
+    gettimeofday(epoch_time, NULL);
+    local_time = localtime(&(epoch_time->tv_sec));
+    time_str_len= strftime(str, max_len, "%H:%M:%S - ", local_time);
+    return time_str_len;
+}
+
 /* Logger thread will be executing this function */
 void* _logger_thread(void * filepath)
 {
     FILE *fp_log;
     int i;
+    char time_str[10];
     fp_log = fopen((char*)filepath, "a+");
     if (fp_log==NULL)
     {
@@ -44,6 +57,8 @@ void* _logger_thread(void * filepath)
                 filepath);
         exit(1);
     }
+    _get_current_time(time_str, 10);
+    printf("%sLog file %s created.\n", time_str, (char*)filepath);
     while(1)
     {
         pthread_mutex_lock(&g_log_buffer_mutex);
@@ -67,6 +82,8 @@ void* _logger_thread(void * filepath)
 
         if(g_log_buffer_cond_signal == TERMINATE_THREAD)
         {
+            _get_current_time(time_str, 10);
+            printf("%sClosing log file %s\n",time_str,(char*)filepath);
             fclose(fp_log);
             g_log_buffer_cond_signal = NO_SIGNAL;
             pthread_mutex_unlock(&g_log_buffer_mutex);
@@ -121,13 +138,7 @@ void log_print(log_level lvl, char const* fmt, ...)
     int print_to_file   = 0;
 
     /* Add datetime to each log string */
-    struct timeval *epoch_time;
-    struct tm *local_time;
-    epoch_time = (struct timeval *)malloc(sizeof(struct timeval));
-    gettimeofday(epoch_time, NULL);
-    local_time = localtime(&(epoch_time->tv_sec));
-    prefix_length = strftime(tmp_buffer, LOG_BUFFER_STR_MAX_LEN,
-            "%H:%M:%S - ", local_time);
+    prefix_length=_get_current_time(tmp_buffer,LOG_BUFFER_STR_MAX_LEN);
 
     switch (lvl)
     {
@@ -147,19 +158,20 @@ void log_print(log_level lvl, char const* fmt, ...)
             break;
     }
 
-	/* Print variable parameters to va_buffer. The length of va_buffer
-	   should be MAX_LEN - prefix_length. But malloc and free would be
-	   expensive. So I am using MAX_LEN here, but using MAX_LEN-prefix_length
-	   while doing the strncat. So all good ;-D Could have used VLA. But
-	   VLA internally takes up extra space. So, why bother so much about 10
-	   chars? */
+    /* Print variable parameters to va_buffer. The length of va_buffer
+       should be MAX_LEN - prefix_length. But malloc and free would be
+       expensive. So I am using MAX_LEN here, but using
+       MAX_LEN-prefix_length while doing the strncat. So all good ;-D
+       Could have used VLA. But VLA internally takes up extra space.
+       So, why bother so much about 10 chars? */
     char va_buffer[LOG_BUFFER_STR_MAX_LEN];
     va_list va;
     va_start(va, fmt);
     vsnprintf(va_buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     va_end(va);
 
-    strncat(tmp_buffer, va_buffer, LOG_BUFFER_STR_MAX_LEN-prefix_length);
+    strncat(tmp_buffer, va_buffer,
+            LOG_BUFFER_STR_MAX_LEN-prefix_length);
 
     pthread_mutex_lock(&g_log_buffer_mutex);
 	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
