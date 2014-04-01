@@ -1,0 +1,7 @@
+*.o
+*.lib
+*.exe
+*.out
+*.so
+*.dll
+tags
