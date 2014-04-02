@@ -1,4 +1,9 @@
-1. Add tests to testsuite.
+1. Add tests to testsuite:
+	a. no init
+	b. no exit
+	c. trace on
+	d. multi-threaded
+	e. forked
 2. Compare time taken to print same data using logger, log4c,
 zlog(HardySimpson) and zlog(zma)
 3. Check race conditions using some tool like Valgrind.
