@@ -130,7 +130,7 @@ static void _create_thread(char* filename)
     }
 }
 
-int log_enable_trace()
+void log_enable_trace()
 {
     g_trace_on = YES;
 }

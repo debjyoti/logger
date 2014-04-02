@@ -11,7 +11,7 @@ typedef enum enum_log_level { ERROR, WARNING, INFO } log_level;
 
 int log_init(char* filename);
 
-int log_enable_trace();
+void log_enable_trace();
 
 void log_print(log_level lvl, char const* fmt, ...);
 
