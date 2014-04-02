@@ -58,9 +58,11 @@ static void _print_to_screen(char const* fmt, ...)
     vsnprintf(msg_str, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     va_end(va);
     printf("\n%s%s\n", time_str, msg_str);
+    fflush(stdout);
 }
 
 /* Logger thread will be executing this function */
+/* CAUTION: Any function invoked must be thread-safe */
 void* _logger_thread(void * filepath)
 {
     FILE *fp_log;
@@ -74,13 +76,14 @@ void* _logger_thread(void * filepath)
     {
         printf("Failed to open log file '%s' in append mode\n",
                 filepath);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
-    _print_to_screen("Log file '%s' opened\n",(char*)filepath);
+    pthread_mutex_lock(&g_log_buffer_mutex);
+    /* make sure that logger_thread reach here before signals are
+     * sent*/
+    g_initialized = YES; 
     while(1)
     {
-        pthread_mutex_lock(&g_log_buffer_mutex);
-
         /*COND_WAIT will unlock mutex and wait for signal.
           when it will receive signal, it will lock the 
           mutex and continue. But sometimes there can be 
@@ -100,8 +103,6 @@ void* _logger_thread(void * filepath)
 
         if(g_log_buffer_cond_signal == TERMINATE_THREAD)
         {
-            _print_to_screen("Closing log file '%s'\n",
-                    (char*)filepath);
             fclose(fp_log);
             g_log_buffer_cond_signal = NO_SIGNAL;
             *exit_status = 1;
@@ -115,16 +116,6 @@ void* _logger_thread(void * filepath)
     return (void*)NULL;
 }
 
-static void _create_thread(char* filename)
-{
-    int rc;
-    _print_to_screen("Creating new logger thread\n");
-    rc = pthread_create(&g_logger_thread_id, NULL,
-            &_logger_thread,(void *) filename);
-    if(rc != 0)
-        handle_error_en(rc, "pthread_create");
-}
-
 void log_enable_trace()
 {
     g_trace_on = YES;
@@ -132,8 +123,23 @@ void log_enable_trace()
 
 int log_init(char* filename)
 {
-    _create_thread(filename);
-    g_initialized = YES;
+    int thread_not_yet_ready = 1;
+    int rc;
+    rc = pthread_create(&g_logger_thread_id, NULL,
+            &_logger_thread,(void *) filename);
+    if(rc != 0)
+        handle_error_en(rc, "pthread_create");
+    while(thread_not_yet_ready)
+    {
+        pthread_mutex_lock(&g_log_buffer_mutex);
+        if(g_initialized)
+        {
+            _print_to_screen("New logger thread created\n");
+            _print_to_screen("Log file '%s' opened\n", filename);
+            thread_not_yet_ready = 0;
+        }
+        pthread_mutex_unlock(&g_log_buffer_mutex);
+    }
     return 0; 
 }
 
@@ -150,10 +156,11 @@ void log_print(log_level lvl, char const* fmt, ...)
     if(!g_initialized)
     {
         fprintf(stderr, "ERROR: Log_init was not invoked\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     int prefix_length;
+    int print_to_err = 0;
     int print_to_screen = 0;
     int print_to_file   = 0;
 
@@ -163,15 +170,17 @@ void log_print(log_level lvl, char const* fmt, ...)
     switch (lvl)
     {
         case INFO:
+            if(g_trace_on) 
+                print_to_screen = 1;
             break;
         case WARNING:
             strncat(tmp_buffer,"WARN - ", 7);
-            print_to_screen = 1;
+            print_to_err = 1;
             print_to_file = 1;
             break;
         case ERROR:
             strncat(tmp_buffer, "ERROR - ", 8);
-            print_to_screen = 1;
+            print_to_err = 1;
             print_to_file = 1;
             break;
         default:
@@ -197,13 +206,19 @@ void log_print(log_level lvl, char const* fmt, ...)
 	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
 			LOG_BUFFER_STR_MAX_LEN);
     g_log_buffer_size++;
+    if(g_log_buffer_size > LOG_BUFFER_FLUSH_SIZE)
+        print_to_file = 1;
     pthread_mutex_unlock(&g_log_buffer_mutex);
 
-    if(g_trace_on || print_to_screen)
+    if(print_to_screen)
     {
         printf("\n%s\n",tmp_buffer);
     }
-    if(print_to_file || (g_log_buffer_size > LOG_BUFFER_FLUSH_SIZE))
+    if(print_to_err)
+    {
+        fprintf(stderr,"\n%s\n",tmp_buffer);
+    }
+    if(print_to_file)
     {
         _signal_logger_thread(FLUSH_BUFFER);
     }
@@ -218,16 +233,22 @@ void log_exit()
             (void **)&thread_return_status);
     if(0==rc && thread_return_status && 1 == (*thread_return_status) )
     {
+        _print_to_screen("Closed log file\n");
         _print_to_screen("Logger thread terminated successfully\n");
         free(thread_return_status); 
     }
+    else if(rc)
+        handle_error_en(rc, "pthread_join");
     else
-        _print_to_screen("ERROR in logger thread termination.\
-                            Ignored.\n");
+    {
+        _print_to_screen("ERROR: pthread_exit did not return\
+                proper exit status. Aborting ...\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void log_file_change(char* new_filename)
 {
     log_exit();
-    _create_thread(new_filename);
+    log_init(new_filename);
 }

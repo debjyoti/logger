@@ -36,8 +36,8 @@ for exe in *; do
     fi
     test_count=$((test_count + 1))
     echo
-    echo "Test $test_count : ./$exe 2>&1>../out/$exe.out"
-    ./$exe 2>&1>../out/$exe".out"
+    echo "Test $test_count : ./$exe &>../out/$exe.out"
+    ./$exe &>../out/$exe".out"
     echo "diff with correct_out/$exe*:"
     case $exe in
         'file_change' )
@@ -53,11 +53,14 @@ for exe in *; do
             ;;
     esac
     if [ $? == 0 ]; then
-        echo "No difference: PASS"
+        echo "  No difference."
+        echo "**************************"
+        echo "          PASS"
+        echo "**************************"
         pass_count=$((pass_count + 1))
     else
         echo "**************************"
-        echo "          FAIL"
+        echo "         !FAIL!"
         echo "**************************"
         fail_count=$((fail_count + 1))
     fi

@@ -1,5 +1,5 @@
 
- Creating new logger thread
+ New logger thread created
 
 
  Log file '../out/level_check.log' opened
@@ -11,7 +11,7 @@
  ERROR - Test ERROR message 3
 
 
- Closing log file '../out/level_check.log'
+ Closed log file
 
 
  Logger thread terminated successfully

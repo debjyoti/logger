@@ -1,23 +1,23 @@
 
- Creating new logger thread
+ New logger thread created
 
 
  Log file '../out/file_change.log' opened
 
 
- Closing log file '../out/file_change.log'
+ Closed log file
 
 
  Logger thread terminated successfully
 
 
- Creating new logger thread
+ New logger thread created
 
 
  Log file '../out/file_change2.log' opened
 
 
- Closing log file '../out/file_change2.log'
+ Closed log file
 
 
  Logger thread terminated successfully
