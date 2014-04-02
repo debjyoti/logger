@@ -1,0 +1,5 @@
+1. Add tests to testsuite.
+2. Compare time taken to print same data using logger, log4c,
+zlog(HardySimpson) and zlog(zma)
+3. Check race conditions using some tool like Valgrind.
+4. Check memory leaks using some tool.

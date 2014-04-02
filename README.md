@@ -40,36 +40,41 @@ self-explanatory.
 Using the library is simple, have a look at the test codes in the
 tests/ folder. It provides the following interface functions:
 1. Initialization (Opens the file and creates the logger thread):
-int log_init(char* filename);
+`int log_init(char* filename);`
 returns 0 for success. 
 
 2. Enables tracing, i.e. all messages are printed to screen.
- void log_enable_trace();
+ `void log_enable_trace();`
    
 3. Log messages:
-void log_print(log_level lvl, char const* fmt, ...);
-e.g.: log_print(INFO, "Print string %s and integer %d", str, i);
-e.g.: log_print(WARNING, "Print string %s and integer %d", str, i);
-e.g.: log_print(ERROR, "Print string %s and integer %d", str, i);
+`void log_print(log_level lvl, char const* fmt, ...);`
+e.g.:
+```
+log_print(INFO, "Print string %s and integer %d", str, i);
+log_print(WARNING, "Print string %s and integer %d", str, i);
+log_print(ERROR, "Print string %s and integer %d", str, i);
+```
 
 4. Log debugging messages: 
-void log_print_debug(char const* fmt, ...)
-e.g.: log_print_debug("Print string %s and integer %d", str, i);
-Note: Your code must be compiled with _LOG_DEBUG flag for debugging
+`void log_print_debug(char const* fmt, ...)`
+e.g.: `log_print_debug("Print string %s and integer %d", str, i);`
+Note: Your code must be compiled with `_LOG_DEBUG` flag for debugging
 messages to be logged.
 
 5. Rotate log file. 
-void log_file_change(char* new_filename);
-e.g: log_file_change("/logpath/logfile2");
+`void log_file_change(char* new_filename);`
+e.g: `log_file_change("/logpath/logfile2");`
 
 6. Exit:
- void log_exit();
+ `void log_exit();`
 
-**TESTSUITE**:
+#####TESTSUITE
 Execute the test/run_tests.sh file to execute all the tests in the
 testsuite.
 
-**IMPORTANT**:
-Only the log_print and log_debug_print is thread-safe.
+**IMPORTANT:**
+Only the log_print and log_debug_print functions are thread-safe.
+
+#####HOW TO CONTRIBUTE:
 
 Email: debjyoti.majumder@gmail.com
