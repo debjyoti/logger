@@ -1,1 +1,24 @@
- Test log message on file 2
+
+ Creating new logger thread
+
+
+ Log file '../out/file_change.log' opened
+
+
+ Closing log file '../out/file_change.log'
+
+
+ Logger thread terminated successfully
+
+
+ Creating new logger thread
+
+
+ Log file '../out/file_change2.log' opened
+
+
+ Closing log file '../out/file_change2.log'
+
+
+ Logger thread terminated successfully
+

@@ -2,9 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
-#include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
 #include "logger.h"
@@ -120,14 +118,11 @@ void* _logger_thread(void * filepath)
 static void _create_thread(char* filename)
 {
     int rc;
+    _print_to_screen("Creating new logger thread\n");
     rc = pthread_create(&g_logger_thread_id, NULL,
             &_logger_thread,(void *) filename);
     if(rc != 0)
         handle_error_en(rc, "pthread_create");
-    else
-    {
-        _print_to_screen("New logger thread created\n");
-    }
 }
 
 void log_enable_trace()

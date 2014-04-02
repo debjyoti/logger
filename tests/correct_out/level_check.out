@@ -1,2 +1,18 @@
+
+ Creating new logger thread
+
+
+ Log file '../out/level_check.log' opened
+
+
  WARN - Test WARN message 2
+
+
  ERROR - Test ERROR message 3
+
+
+ Closing log file '../out/level_check.log'
+
+
+ Logger thread terminated successfully
+
