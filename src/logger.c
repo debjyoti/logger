@@ -173,7 +173,6 @@ void log_print(log_level lvl, char const* fmt, ...)
         case WARNING:
             strncat(tmp_buffer,"WARN - ", 7);
             print_to_err = 1;
-            print_to_file = 1;
             break;
         case ERROR:
             strncat(tmp_buffer, "ERROR - ", 8);
