@@ -24,8 +24,8 @@ echo "------Go to bin ------"
 echo "cd bin"
 cd bin/
 echo 
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~"
-echo "---Start Running Tests---"
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "------------------Start Running Tests------------------"
 test_count=0
 pass_count=0
 fail_count=0
@@ -66,8 +66,8 @@ for exe in *; do
     fi
 done
 echo
-echo "-----Tests Completed-----"
-echo "~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "--------------------Tests Completed--------------------"
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 echo "PASS: $pass_count"
 echo "FAIL: $fail_count"
 echo

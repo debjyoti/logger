@@ -20,16 +20,18 @@ typedef enum enum_sig{NO_SIGNAL, FLUSH_BUFFER, TERMINATE_THREAD}
 enum_signal;
 typedef enum enum_boolean{ NO = 0, YES = 1 } enum_bool;
 
-/* global variables  */
-pthread_t           g_logger_thread_id;
+/* global variables that are used by both threads */
 pthread_cond_t      g_log_buffer_cond  =PTHREAD_COND_INITIALIZER;
 pthread_mutex_t     g_log_buffer_mutex =PTHREAD_MUTEX_INITIALIZER;
 char                g_log_buffer[LOG_BUFFER_SIZE]\
                         [LOG_BUFFER_STR_MAX_LEN];
 int                 g_log_buffer_size = 0;
 enum_signal         g_log_buffer_cond_signal = NO_SIGNAL;
-enum_bool           g_trace_on = NO;
 enum_bool           g_initialized = NO;
+
+/* global variables only used by main thread */
+pthread_t           g_logger_thread_id;
+enum_bool           g_trace_on = NO;
 
 static int _get_current_time(char* str, int max_len)
 {
@@ -153,11 +155,6 @@ static inline void _signal_logger_thread(enum_signal sig)
 
 void log_print(log_level lvl, char const* fmt, ...)
 {
-    if(!g_initialized)
-    {
-        fprintf(stderr, "ERROR: Log_init was not invoked\n");
-        exit(EXIT_FAILURE);
-    }
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     int prefix_length;
     int print_to_err = 0;
