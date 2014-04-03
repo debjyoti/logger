@@ -34,13 +34,15 @@ for exe in *; do
     echo
     echo "Test $test_count : ./$exe &>../out/$exe.out"
     ./$exe &>../out/$exe".out"
-    echo "diff with correct_out/$exe*:"
     case $exe in
         'file_change' )
             cut -d- -f2- ../out/$exe".log" > ../out/"cut_"$exe".log"
             cut -d- -f2- ../out/$exe".out" > ../out/"cut_"$exe".out"
             cut -d- -f2- ../out/file_change2.log > ../out/cut_file_change2.log
             diff ../correct_out/file_change.log ../out/cut_file_change.log && diff ../correct_out/file_change.out ../out/cut_file_change.out && diff ../correct_out/file_change2.log ../out/cut_file_change2.log
+            ;;
+        'no_init' )
+            grep "pthread_join: No such process" ../out/no_init.out > /dev/null
             ;;
         * )
             cut -d- -f2- ../out/$exe".log" > ../out/"cut_"$exe".log"
@@ -49,7 +51,6 @@ for exe in *; do
             ;;
     esac
     if [ $? == 0 ]; then
-        echo "  No difference."
         echo "**************************"
         echo "          PASS"
         echo "**************************"

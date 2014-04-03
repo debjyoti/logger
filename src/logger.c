@@ -7,8 +7,6 @@
 #include <time.h>
 #include "logger.h"
 
-#define LOG_BUFFER_SIZE 1024
-#define LOG_BUFFER_FLUSH_SIZE (0.8 * LOG_BUFFER_SIZE)
 #define _MAX_TIME_STR_LEN 15
 
 typedef enum enum_sig{NO_SIGNAL, FLUSH_BUFFER, TERMINATE_THREAD}
@@ -26,10 +24,11 @@ char                g_log_buffer[LOG_BUFFER_SIZE]\
 int                 g_log_buffer_size = 0;
 enum_signal         g_log_buffer_cond_signal = NO_SIGNAL;
 enum_bool           g_initialized = NO;
+enum_bool           g_trace_on = NO;
 
 /* global variables only used by main thread */
 pthread_t           g_logger_thread_id;
-enum_bool           g_trace_on = NO;
+int                 g_log_buffer_flush_size = 0.8 * LOG_BUFFER_SIZE;
 
 static void _handle_error_en(int en, char* msg)
 {
@@ -102,11 +101,24 @@ void* _logger_thread(void * filepath)
                     &g_log_buffer_mutex);
         }
 
-        for(i = 0; i<g_log_buffer_size; i++)
+        if(g_trace_on)
         {
-            fprintf(fp_log, "%s", g_log_buffer[i]);
+            for(i = 0; i<g_log_buffer_size; i++)
+            {
+                fprintf(stdout, "%s", g_log_buffer[i]);
+                fprintf(fp_log, "%s", g_log_buffer[i]);
+            }
+            fflush(stdout);
+            fflush(fp_log);
         }
-        fflush(fp_log);
+        else
+        {
+            for(i = 0; i<g_log_buffer_size; i++)
+            {
+                fprintf(fp_log, "%s", g_log_buffer[i]);
+            }
+            fflush(fp_log);
+        }
         g_log_buffer_size = 0;
 
         if(g_log_buffer_cond_signal == TERMINATE_THREAD)
@@ -126,7 +138,10 @@ void* _logger_thread(void * filepath)
 
 void log_enable_trace()
 {
+    pthread_mutex_lock(&g_log_buffer_mutex);
+    g_log_buffer_flush_size = TRACE_BUFFER_SIZE;
     g_trace_on = YES;
+    pthread_mutex_unlock(&g_log_buffer_mutex);
 }
 
 int log_init(char* filename)
@@ -172,13 +187,10 @@ void log_print(log_level lvl, char const* fmt, ...)
 
     switch (lvl)
     {
-        case INFO:
-            if(g_trace_on) 
-                print_to_screen = 1;
-            break;
         case WARNING:
             strncat(tmp_buffer,"WARN - ", 7);
             print_to_err = 1;
+            print_to_file = 1;
             break;
         case ERROR:
             strncat(tmp_buffer, "ERROR - ", 8);
@@ -208,14 +220,10 @@ void log_print(log_level lvl, char const* fmt, ...)
 	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
 			LOG_BUFFER_STR_MAX_LEN);
     g_log_buffer_size++;
-    if(g_log_buffer_size > LOG_BUFFER_FLUSH_SIZE)
+    if(g_log_buffer_size > g_log_buffer_flush_size)
         print_to_file = 1;
     pthread_mutex_unlock(&g_log_buffer_mutex);
 
-    if(print_to_screen)
-    {
-        printf("\n%s\n",tmp_buffer);
-    }
     if(print_to_err)
     {
         fprintf(stderr,"\n%s\n",tmp_buffer);

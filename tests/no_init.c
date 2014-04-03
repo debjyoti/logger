@@ -10,5 +10,6 @@ int main()
     log_print(ERROR, "Test ERROR message %d\n", ++msg_count);
     log_print_debug("Test DEBUG message %d\n", ++msg_count);
     log_exit();
+    printf("Done\n");
     return 0;
 }
