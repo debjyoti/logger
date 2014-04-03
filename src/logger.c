@@ -68,8 +68,9 @@ static void _print_to_screen(char const* fmt, ...)
     fflush(stdout);
 }
 
-/* Logger thread will be executing this function */
-/* CAUTION: Any function invoked must be thread-safe */
+/* Logger thread will be executing this function 
+ * CAUTION: Any function invoked from within _logger_thread must be
+ * thread-safe */
 void* _logger_thread(void * filepath)
 {
     FILE *fp_log;

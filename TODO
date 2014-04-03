@@ -4,7 +4,7 @@
 	c. trace on
 	d. multi-threaded
 	e. forked
-2. Compare time taken to print same data using logger, log4c,
-zlog(HardySimpson) and zlog(zma)
+2. Compare performance with log4c, zlog(HardySimpson), pantheios,
+logprintf and zlog(zma)
 3. Check race conditions using some tool like Valgrind.
 4. Check memory leaks using some tool.

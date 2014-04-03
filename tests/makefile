@@ -6,7 +6,8 @@ LIBS      := -lpthread
 #OBJECTS  := log_level4_traceOn.o logger.o file_change.o
 EXE       :=    \
             file_change \
-            level_check
+            level_check \
+            no_init
             
 all:    $(EXE)
 
