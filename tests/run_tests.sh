@@ -1,15 +1,11 @@
 echo 
 echo "------make clean------"
 make clean
-if [ $? != 0 ]; then
-    echo "ERROR occured during make install. ABORTING..."
-    exit
-fi
 echo 
-echo "-------make all-------"
-make all
+echo "-------make $@-------"
+make $@
 if [ $? != 0 ]; then
-    echo "ERROR occured during make install. ABORTING..."
+    echo "ERROR occured during make $@. ABORTING..."
     exit
 fi
 echo
