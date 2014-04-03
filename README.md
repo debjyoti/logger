@@ -2,16 +2,16 @@ This library provides functions to write log messages to files(and to
 screen). It has the following benefits compared to directly doing
 fprintf:
 
-1. A separate thread writes the log messages. Precious IO time will be
-saved if you are using a multi-core processor.
+1. A separate thread writes the log messages. I/O time will be saved
+if you are using a multi-core processor.
 
 2. You can specify levels for the message like INFO, WARNING, ERROR.
 
-3. Debug messages are removed by the preprocessor if DEBUG flag is not
-used during compilation.
+3. Debug messages are removed by the preprocessor if _LOG_DEBUG flag
+is not used during compilation.
 
 4. INFO and debugging (if enabled) messages are buffered in-memory
-before writing to the log file.
+before writing to the log file. 
 
 5. The time (Hour:Min:Sec) and Level of a message will automatically
 get prefixed to the message.
@@ -21,7 +21,7 @@ get prefixed to the message.
 <hr>
 ####Comparison with existing logging libraries (log4c and zlog):
 
-Advantages:
+Advantages of logger:
 
 1. It uses a separate thread to log messages.
 
@@ -66,8 +66,8 @@ returns 0 for success.
 void log_enable_trace();
 ```
 
-Not recommended for good performance, because buffering is disabled when
-traceing is used.
+Not recommended for good performance, because buffering is disabled
+when traceing is used.
    
 - log_print (Log messages):
 ```c

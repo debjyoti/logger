@@ -7,20 +7,18 @@
 #include <time.h>
 #include "logger.h"
 
-/* TODO: Test and remove unnecessary includes */
-
 #define LOG_BUFFER_SIZE 1024
 #define LOG_BUFFER_FLUSH_SIZE (0.8 * LOG_BUFFER_SIZE)
 #define _MAX_TIME_STR_LEN 15
-
-#define handle_error_en(en, msg) \
-    do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 
 typedef enum enum_sig{NO_SIGNAL, FLUSH_BUFFER, TERMINATE_THREAD}
 enum_signal;
 typedef enum enum_boolean{ NO = 0, YES = 1 } enum_bool;
 
-/* global variables that are used by both threads */
+/*
+ * The following global variables that are used by both threads. Hence
+ * mutex locks should be used for both read & write
+ */
 pthread_cond_t      g_log_buffer_cond  =PTHREAD_COND_INITIALIZER;
 pthread_mutex_t     g_log_buffer_mutex =PTHREAD_MUTEX_INITIALIZER;
 char                g_log_buffer[LOG_BUFFER_SIZE]\
@@ -32,6 +30,13 @@ enum_bool           g_initialized = NO;
 /* global variables only used by main thread */
 pthread_t           g_logger_thread_id;
 enum_bool           g_trace_on = NO;
+
+static void _handle_error_en(int en, char* msg)
+{
+    errno = en;
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
 
 static int _get_current_time(char* str, int max_len)
 {
@@ -130,7 +135,7 @@ int log_init(char* filename)
     rc = pthread_create(&g_logger_thread_id, NULL,
             &_logger_thread,(void *) filename);
     if(rc != 0)
-        handle_error_en(rc, "pthread_create");
+        _handle_error_en(rc, "pthread_create");
     while(thread_not_yet_ready)
     {
         pthread_mutex_lock(&g_log_buffer_mutex);
@@ -234,13 +239,10 @@ void log_exit()
         free(thread_return_status); 
     }
     else if(rc)
-        handle_error_en(rc, "pthread_join");
+        _handle_error_en(rc, "pthread_join");
     else
-    {
-        _print_to_screen("ERROR: pthread_exit did not return\
-                proper exit status. Aborting ...\n");
-        exit(EXIT_FAILURE);
-    }
+        _handle_error_en(-2,
+                "pthread_exit did not return proper exit status");
 }
 
 void log_file_change(char* new_filename)
