@@ -7,7 +7,9 @@ LIBS      := -lpthread
 EXE       :=    \
             file_change \
             level_check \
-            no_init
+            no_init \
+            exceed_buffer \
+            trace_on
             
 all:    $(EXE)
 

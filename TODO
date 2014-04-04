@@ -9,3 +9,4 @@ logprintf and zlog(zma)
 3. Check race conditions using some tool like Valgrind.
 4. Check memory leaks using some tool.
 5. How to flush buffer in case of sudden exit due to error.
+6. Handle signals. Flush buffer when ctrl^c is done.

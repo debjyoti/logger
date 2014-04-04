@@ -101,6 +101,10 @@ void* _logger_thread(void * filepath)
                     &g_log_buffer_mutex);
         }
 
+#ifdef _LOG_DEBUG
+        printf("Logger Thread: About to print %d msgs\n",
+                g_log_buffer_size);
+#endif
         if(g_trace_on)
         {
             for(i = 0; i<g_log_buffer_size; i++)
@@ -130,7 +134,6 @@ void* _logger_thread(void * filepath)
             pthread_exit((void*)exit_status);
         }
         g_log_buffer_cond_signal = NO_SIGNAL;
-        pthread_mutex_unlock(&g_log_buffer_mutex);
     }
     fclose(fp_log);
     return (void*)NULL;
@@ -157,8 +160,12 @@ int log_init(char* filename)
         pthread_mutex_lock(&g_log_buffer_mutex);
         if(g_initialized)
         {
-            _print_to_screen("New logger thread created\n");
+            _print_to_screen("New logger thread created with id %d\n"
+                    , g_logger_thread_id);
             _print_to_screen("Log file '%s' opened\n", filename);
+            _print_to_screen(
+                    "LogBuffer will be flushed after ~%d msg\n",
+                    g_log_buffer_flush_size);
             thread_not_yet_ready = 0;
         }
         pthread_mutex_unlock(&g_log_buffer_mutex);
@@ -166,9 +173,43 @@ int log_init(char* filename)
     return 0; 
 }
 
+/* Note the mutex must be locked before calling this func */
+static inline void _wait_for_logger_thread()
+{
+    while(g_log_buffer_cond_signal != NO_SIGNAL)
+    {
+        pthread_mutex_unlock(&g_log_buffer_mutex);
+        if(g_logger_thread_id)
+            sleep(1);
+        else
+            _handle_error_en(-4, "Logger thread is dead\n");
+        pthread_mutex_lock(&g_log_buffer_mutex);
+    }
+}
+
 static inline void _signal_logger_thread(enum_signal sig)
 {
     pthread_mutex_lock(&g_log_buffer_mutex);
+    /* Race Condition: Logger thread might not have processed the
+     * previous signal yet */
+    if(g_log_buffer_cond_signal == sig)
+    {
+        /* Last signal is not yet processed. Since it was the same
+         * signal no need to send this one */
+        pthread_mutex_unlock(&g_log_buffer_mutex);
+        return;
+    }
+    else if (g_log_buffer_cond_signal != NO_SIGNAL)
+    {
+        /* Last signal is not yet processed. It was a different
+         * signal. Need to wait before sending the new signal. */ 
+        _wait_for_logger_thread();
+    }
+#ifdef _LOG_DEBUG
+    _print_to_screen(
+            "Main Thread: Sending signal to print %d msg\n",
+            g_log_buffer_size);
+#endif
     g_log_buffer_cond_signal = sig;
     pthread_cond_signal(&g_log_buffer_cond);
     pthread_mutex_unlock(&g_log_buffer_mutex);
@@ -176,6 +217,11 @@ static inline void _signal_logger_thread(enum_signal sig)
 
 void log_print(log_level lvl, char const* fmt, ...)
 {
+    if(!g_logger_thread_id)
+    {
+        _handle_error_en(-3, "Fatal Error: Logger thread id is 0.\
+        Did you forget to invoke log_init?\n");
+    }
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     int prefix_length;
     int print_to_err = 0;
@@ -201,12 +247,12 @@ void log_print(log_level lvl, char const* fmt, ...)
             break;
     }
 
-    /* Print variable parameters to va_buffer. The length of va_buffer
-       should be MAX_LEN - prefix_length. But malloc and free would be
-       expensive. So I am using MAX_LEN here, but using
-       MAX_LEN-prefix_length while doing the strncat. So all good ;-D
-       Could have used VLA. But VLA internally takes up extra space.
-       So, why bother so much about 10 chars? */
+    /* Print variable parameters to va_buffer. The length of
+     * va_buffer should be MAX_LEN - prefix_length. But malloc and
+     * free would be expensive. So I am using MAX_LEN here, but
+     * using MAX_LEN-prefix_length while doing the strncat. So all
+     * good ;-D Could have used VLA. But VLA internally takes up
+     * extra space. So, why bother so much about 10 chars? */
     char va_buffer[LOG_BUFFER_STR_MAX_LEN];
     va_list va;
     va_start(va, fmt);
@@ -220,8 +266,10 @@ void log_print(log_level lvl, char const* fmt, ...)
 	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
 			LOG_BUFFER_STR_MAX_LEN);
     g_log_buffer_size++;
-    if(g_log_buffer_size > g_log_buffer_flush_size)
+    if(g_log_buffer_size == g_log_buffer_flush_size)
         print_to_file = 1;
+    else if(g_log_buffer_size >= LOG_BUFFER_SIZE)
+        _wait_for_logger_thread();
     pthread_mutex_unlock(&g_log_buffer_mutex);
 
     if(print_to_err)

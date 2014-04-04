@@ -25,7 +25,7 @@ echo "------------------Start Running Tests------------------"
 test_count=0
 pass_count=0
 fail_count=0
-for exe in *; do
+for exe in `ls -rt`; do
     if [ "${exe##*.}" == 'exe' ]; then #rm .exe extension in Cygwin
         mv $exe ${exe%.exe}
         exe=${exe%.exe}
