@@ -10,3 +10,5 @@ logprintf and zlog(zma)
 4. Check memory leaks using some tool.
 5. How to flush buffer in case of sudden exit due to error.
 6. Handle signals. Flush buffer when ctrl^c is done.
+7. Test if sched_yield works in AIX. Or should I use
+pthread_yield() or sleep(1)?
