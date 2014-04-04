@@ -16,21 +16,21 @@ enum_signal;
 typedef enum enum_boolean{ NO = 0, YES = 1 } enum_bool;
 
 /*
- * The following global variables that are used by both threads. Hence
- * mutex locks should be used for both read & write
+ * The following global variables that are used by both threads.
+ * Hence mutex locks should be used for both read & write
  */
-pthread_cond_t      g_log_buffer_cond  =PTHREAD_COND_INITIALIZER;
-pthread_mutex_t     g_log_buffer_mutex =PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t      g_log_cond  =PTHREAD_COND_INITIALIZER;
+pthread_mutex_t     g_log_mutex =PTHREAD_MUTEX_INITIALIZER;
 char                g_log_buffer[LOG_BUFFER_SIZE]\
                         [LOG_BUFFER_STR_MAX_LEN];
-int                 g_log_buffer_size = 0;
+int                 g_log_buffer_fill = 0;
 enum_signal         g_signal = NO_SIGNAL;
 enum_bool           g_initialized = NO;
 enum_bool           g_trace_on = NO;
 
 /* global variables only used by main thread */
 pthread_t           g_logger_thread_id;
-int                 g_log_buffer_flush_size = 0.8 * LOG_BUFFER_SIZE;
+int                 g_log_buffer_flush_size = 0.8*LOG_BUFFER_SIZE;
 
 static void _handle_error_en(int en, char* msg)
 {
@@ -47,7 +47,7 @@ static int _get_current_time(char* str, int max_len)
     epoch_time = (struct timeval *)malloc(sizeof(struct timeval));
     gettimeofday(epoch_time, NULL);
     local_time = localtime(&(epoch_time->tv_sec));
-    time_str_len= strftime(str, max_len, "%H:%M:%S - ", local_time);
+    time_str_len=strftime(str, max_len, "%H:%M:%S - ", local_time);
     if(!time_str_len) /* 0 when max_len is shorter than format */
     {
         time_str_len = max_len-1;
@@ -69,9 +69,10 @@ static void _print_to_screen(char const* fmt, ...)
     fflush(stdout);
 }
 
-/* Logger thread will be executing this function 
- * CAUTION: Any function invoked from within _logger_thread must be
- * thread-safe */
+/* Logger thread will be executing this function CAUTION: Any
+ * function invoked from within _logger_thread must be thread-safe.
+ * Currently only printf, malloc, fopen, fclose and fflush are
+ * used, which are thread safe (though not reentrant). */
 void* _logger_thread(void * filepath)
 {
     FILE *fp_log;
@@ -87,9 +88,9 @@ void* _logger_thread(void * filepath)
                 filepath);
         exit(EXIT_FAILURE);
     }
-    pthread_mutex_lock(&g_log_buffer_mutex);
+    pthread_mutex_lock(&g_log_mutex);
     /* make sure that logger_thread reach here before signals are
-     * sent*/
+     * sent. Otherwise the signal will be lost. */
     g_initialized = YES; 
     while(1)
     {
@@ -99,79 +100,79 @@ void* _logger_thread(void * filepath)
           false signal. Hence, the cond_var while loop is 
           used. */
         while (g_signal == NO_SIGNAL) { 
-            pthread_cond_wait(&g_log_buffer_cond,
-                    &g_log_buffer_mutex);
+            pthread_cond_wait(&g_log_cond,
+                    &g_log_mutex);
         }
 
 #ifdef _LOG_DEBUG
         printf("Logger Thread: About to print %d msgs\n",
-                g_log_buffer_size);
+                g_log_buffer_fill);
 #endif
         if(g_trace_on)
         {
-            for(i = 0; i<g_log_buffer_size; i++)
+            for(i = 0; i<g_log_buffer_fill; i++)
             {
                 fprintf(stdout, "\n%s\n", g_log_buffer[i]);
                 fprintf(fp_log, "%s", g_log_buffer[i]);
             }
-            fflush(stdout);
-            fflush(fp_log);
+            fflush(NULL);
         }
         else
         {
-            for(i = 0; i<g_log_buffer_size; i++)
+            for(i = 0; i<g_log_buffer_fill; i++)
             {
                 fprintf(fp_log, "%s", g_log_buffer[i]);
             }
-            fflush(fp_log);
         }
-        g_log_buffer_size = 0;
+        g_log_buffer_fill = 0;
 
         if(g_signal == TERMINATE_THREAD)
         {
             fclose(fp_log);
             g_signal = NO_SIGNAL;
             *exit_status = 1;
-            pthread_mutex_unlock(&g_log_buffer_mutex);
+            pthread_mutex_unlock(&g_log_mutex);
             pthread_exit((void*)exit_status);
         }
         g_signal = NO_SIGNAL;
     }
     fclose(fp_log);
-    pthread_mutex_unlock(&g_log_buffer_mutex);
+    pthread_mutex_unlock(&g_log_mutex);
     return (void*)NULL;
 }
 
 void log_enable_trace()
 {
-    pthread_mutex_lock(&g_log_buffer_mutex);
-    g_log_buffer_flush_size = TRACE_BUFFER_SIZE;
+    pthread_mutex_lock(&g_log_mutex);
+    g_log_buffer_flush_size = 1;
     g_trace_on = YES;
-    pthread_mutex_unlock(&g_log_buffer_mutex);
+    pthread_mutex_unlock(&g_log_mutex);
 }
 
 int log_init(char* filename)
 {
-    int thread_not_yet_ready = 1;
+    enum_bool thread_ready = NO;
     int rc;
     rc = pthread_create(&g_logger_thread_id, NULL,
             &_logger_thread,(void *) filename);
     if(rc != 0)
         _handle_error_en(rc, "pthread_create");
-    while(thread_not_yet_ready)
+    while(!thread_ready)
     {
-        pthread_mutex_lock(&g_log_buffer_mutex);
+        pthread_mutex_lock(&g_log_mutex);
         if(g_initialized)
         {
-            _print_to_screen("New logger thread created with id %d\n"
+            pthread_mutex_unlock(&g_log_mutex);
+            _print_to_screen("New logger thread # %d created \n"
                     , g_logger_thread_id);
             _print_to_screen("Log file '%s' opened\n", filename);
-            _print_to_screen(
-                    "LogBuffer will be flushed after ~%d msg\n",
-                    g_log_buffer_flush_size);
-            thread_not_yet_ready = 0;
+            thread_ready = YES;
         }
-        pthread_mutex_unlock(&g_log_buffer_mutex);
+        else
+        {
+            pthread_mutex_unlock(&g_log_mutex);
+            sched_yield();
+        }
     }
     return 0; 
 }
@@ -197,40 +198,45 @@ static int _wait_for_logger_thread()
     int rc, yield_count;
     _check_logger_thread_is_active();
     yield_count = 0;
-    pthread_mutex_lock(&g_log_buffer_mutex);
+    pthread_mutex_lock(&g_log_mutex);
 #ifdef _LOG_DEBUG
     _print_to_screen("Main Thread: Waiting for logger thread.\
-        Buffer has %d msgs.\n", g_log_buffer_size);
+        Buffer has %d msgs.\n", g_log_buffer_fill);
 #endif
     while(g_signal != NO_SIGNAL)
     {
-        pthread_mutex_unlock(&g_log_buffer_mutex);
+        pthread_mutex_unlock(&g_log_mutex);
         sched_yield();
         yield_count++;
         if(yield_count > _MAX_YIELD_WAIT)
         {
             _handle_error_en(-5, "Logger thread is hung\n");
         }
-        pthread_mutex_lock(&g_log_buffer_mutex);
+        pthread_mutex_lock(&g_log_mutex);
     }
 #ifdef _LOG_DEBUG
     _print_to_screen("Main Thread: Logger done after %d yield.\
-        Buffer has %d msgs.\n", yield_count, g_log_buffer_size);
+        Buffer has %d msgs.\n", yield_count, g_log_buffer_fill);
 #endif
-    pthread_mutex_unlock(&g_log_buffer_mutex);
+    pthread_mutex_unlock(&g_log_mutex);
     return 0;
 }
 
 static inline void _signal_logger_thread(enum_signal sig)
 {
-    pthread_mutex_lock(&g_log_buffer_mutex);
+    pthread_mutex_lock(&g_log_mutex);
+
+    int to_yield = 0;
+    if(g_trace_on)
+        to_yield = 1;
+
     /* Race Condition: Logger thread might not have processed the
      * previous signal yet */
     if(g_signal == sig)
     {
         /* Last signal is not yet processed. Since it was the same
          * signal no need to send this one */
-        pthread_mutex_unlock(&g_log_buffer_mutex);
+        pthread_mutex_unlock(&g_log_mutex);
         return;
     }
     else if (g_signal != NO_SIGNAL)
@@ -242,18 +248,20 @@ static inline void _signal_logger_thread(enum_signal sig)
                 g_signal==FLUSH_BUFFER?"FLUSH_BUFFER":"TERMINATE",
                 sig==FLUSH_BUFFER?"FLUSH_BUFFER":"TERMINATE");
 #endif
-        pthread_mutex_unlock(&g_log_buffer_mutex);
+        pthread_mutex_unlock(&g_log_mutex);
         _wait_for_logger_thread();
-        pthread_mutex_lock(&g_log_buffer_mutex);
+        pthread_mutex_lock(&g_log_mutex);
     }
 #ifdef _LOG_DEBUG
     _print_to_screen(
             "Main Thread: Sending signal to print %d msg\n",
-            g_log_buffer_size);
+            g_log_buffer_fill);
 #endif
     g_signal = sig;
-    pthread_cond_signal(&g_log_buffer_cond);
-    pthread_mutex_unlock(&g_log_buffer_mutex);
+    pthread_cond_signal(&g_log_cond);
+    pthread_mutex_unlock(&g_log_mutex);
+    if(to_yield)
+        sched_yield();
 }
 
 void log_print(log_level lvl, char const* fmt, ...)
@@ -265,7 +273,8 @@ void log_print(log_level lvl, char const* fmt, ...)
     int print_to_file   = 0;
 
     /* Add datetime to each log string */
-    prefix_length=_get_current_time(tmp_buffer,LOG_BUFFER_STR_MAX_LEN);
+    prefix_length = _get_current_time( tmp_buffer,
+            LOG_BUFFER_STR_MAX_LEN);
 
     switch (lvl)
     {
@@ -298,23 +307,23 @@ void log_print(log_level lvl, char const* fmt, ...)
     strncat(tmp_buffer, va_buffer,
             LOG_BUFFER_STR_MAX_LEN-prefix_length);
 
-    pthread_mutex_lock(&g_log_buffer_mutex);
-	strncpy(g_log_buffer[g_log_buffer_size], tmp_buffer,
+    pthread_mutex_lock(&g_log_mutex);
+	strncpy(g_log_buffer[g_log_buffer_fill], tmp_buffer,
 			LOG_BUFFER_STR_MAX_LEN);
-    g_log_buffer_size++;
-    if(g_log_buffer_size == g_log_buffer_flush_size)
+    g_log_buffer_fill++;
+    if(g_log_buffer_fill == g_log_buffer_flush_size)
         print_to_file = 1;
-    else if(g_log_buffer_size >= LOG_BUFFER_SIZE)
+    else if(g_log_buffer_fill >= LOG_BUFFER_SIZE)
     {
 #ifdef _LOG_DEBUG
         _print_to_screen("Buffer size overflow. Buffer=%d. Max=%d\
-        Gonna Wait", g_log_buffer_size, LOG_BUFFER_SIZE);
+        Gonna Wait", g_log_buffer_fill, LOG_BUFFER_SIZE);
 #endif
-        pthread_mutex_unlock(&g_log_buffer_mutex);
+        pthread_mutex_unlock(&g_log_mutex);
         _wait_for_logger_thread();
-        pthread_mutex_lock(&g_log_buffer_mutex);
+        pthread_mutex_lock(&g_log_mutex);
     }
-    pthread_mutex_unlock(&g_log_buffer_mutex);
+    pthread_mutex_unlock(&g_log_mutex);
 
     if(print_to_err)
     {

@@ -4,7 +4,6 @@
 #include <stdarg.h> /* for variable arguments used in debug func */
 
 #define LOG_BUFFER_SIZE 1024
-#define TRACE_BUFFER_SIZE 10
 #define LOG_BUFFER_STR_MAX_LEN 128
 
 typedef enum enum_log_level { ERROR, WARNING, INFO } log_level;
