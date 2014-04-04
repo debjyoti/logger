@@ -8,6 +8,7 @@
 #include "logger.h"
 
 #define _MAX_TIME_STR_LEN 15
+#define _MAX_YIELD_WAIT 200
 
 typedef enum enum_sig{NO_SIGNAL, FLUSH_BUFFER, TERMINATE_THREAD}
 enum_signal;
@@ -173,18 +174,43 @@ int log_init(char* filename)
     return 0; 
 }
 
-/* Note the mutex must be locked before calling this func */
-static inline void _wait_for_logger_thread()
+static void _check_logger_thread_is_active()
 {
+    int rc;
+    if(!g_logger_thread_id)
+    {
+        _handle_error_en(-3, "Fatal Error: Logger thread id is 0.\
+        Did you forget to invoke log_init?\n");
+    }
+    /* pthread_kill is used here to check if the thread exists.
+     * sig is 0, so no signal is sent, but error checking is
+     * still performed */
+    rc = pthread_kill(g_logger_thread_id,0);
+    if( rc ) /* rc 0 means that the thread is active */
+        _handle_error_en(rc , "Logger thread is dead\n");
+}
+
+static int _wait_for_logger_thread()
+{
+    int rc, yield_count;
+    _check_logger_thread_is_active();
+    yield_count = 0;
+    pthread_mutex_lock(&g_log_buffer_mutex);
     while(g_log_buffer_cond_signal != NO_SIGNAL)
     {
         pthread_mutex_unlock(&g_log_buffer_mutex);
-        if(g_logger_thread_id)
-            sleep(1);
-        else
-            _handle_error_en(-4, "Logger thread is dead\n");
+        rc = pthread_yield();
+        if( rc )
+            handle_error_en(rc, "pthread_yield");
+        yield_count++;
+        if(yield_count > _MAX_YIELD_WAIT)
+        {
+            _handle_error_en(-5, "Logger thread is hung\n");
+        }
         pthread_mutex_lock(&g_log_buffer_mutex);
     }
+    pthread_mutex_unlock(&g_log_buffer_mutex);
+    return 0;
 }
 
 static inline void _signal_logger_thread(enum_signal sig)
@@ -203,7 +229,9 @@ static inline void _signal_logger_thread(enum_signal sig)
     {
         /* Last signal is not yet processed. It was a different
          * signal. Need to wait before sending the new signal. */ 
+        pthread_mutex_unlock(&g_log_buffer_mutex);
         _wait_for_logger_thread();
+        pthread_mutex_lock(&g_log_buffer_mutex);
     }
 #ifdef _LOG_DEBUG
     _print_to_screen(
@@ -217,11 +245,6 @@ static inline void _signal_logger_thread(enum_signal sig)
 
 void log_print(log_level lvl, char const* fmt, ...)
 {
-    if(!g_logger_thread_id)
-    {
-        _handle_error_en(-3, "Fatal Error: Logger thread id is 0.\
-        Did you forget to invoke log_init?\n");
-    }
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     int prefix_length;
     int print_to_err = 0;
@@ -269,7 +292,11 @@ void log_print(log_level lvl, char const* fmt, ...)
     if(g_log_buffer_size == g_log_buffer_flush_size)
         print_to_file = 1;
     else if(g_log_buffer_size >= LOG_BUFFER_SIZE)
+    {
+        pthread_mutex_unlock(&g_log_buffer_mutex);
         _wait_for_logger_thread();
+        pthread_mutex_lock(&g_log_buffer_mutex);
+    }
     pthread_mutex_unlock(&g_log_buffer_mutex);
 
     if(print_to_err)
@@ -289,10 +316,11 @@ void log_exit()
     _signal_logger_thread(TERMINATE_THREAD);
     rc = pthread_join(g_logger_thread_id,
             (void **)&thread_return_status);
-    if(0==rc && thread_return_status && 1 == (*thread_return_status) )
+    if(0==rc && thread_return_status &&
+            1 == (*thread_return_status) )
     {
         _print_to_screen("Closed log file\n");
-        _print_to_screen("Logger thread terminated successfully\n");
+        _print_to_screen("Logger thread terminated\n");
         free(thread_return_status); 
     }
     else if(rc)
