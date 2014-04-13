@@ -12,3 +12,6 @@ logprintf and zlog(zma)
 6. Handle signals. Flush buffer when ctrl^c is done.
 7. Test if sched_yield works in AIX. Or should I use
 pthread_yield() or sleep(1)?
+8. If debug is set, use mutex ERRORCHECK, to find any deadlock
+situations.
+9. Add rc checks everywhere.

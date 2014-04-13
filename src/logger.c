@@ -269,7 +269,6 @@ void log_print(log_level lvl, char const* fmt, ...)
     char tmp_buffer[LOG_BUFFER_STR_MAX_LEN];
     int prefix_length;
     int print_to_err = 0;
-    int print_to_screen = 0;
     int print_to_file   = 0;
 
     /* Add datetime to each log string */
