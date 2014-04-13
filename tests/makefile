@@ -1,5 +1,5 @@
 CXX       := gcc
-CXXFLAGS  := -D_LOG_DEBUG
+CXXFLAGS  := 
 LINKFLAGS := -D_THREAD_SAFE
 INCLUDES  := 
 LIBS      := -lpthread

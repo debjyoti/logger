@@ -42,7 +42,7 @@ for exe in `ls -rt`; do
             diff ../correct_out/file_change.log ../out/cut_file_change.log && diff ../correct_out/file_change.out ../out/cut_file_change.out && diff ../correct_out/file_change2.log ../out/cut_file_change2.log
             ;;
         'no_init' )
-            grep "pthread_join: No such process" ../out/no_init.out > /dev/null
+            grep "Did you forget to invoke log_init?" ../out/no_init.out > /dev/null
             ;;
         * )
             cut -d- -f2- ../out/$exe".log" > ../out/"cut_"$exe".log"
