@@ -1,9 +1,6 @@
 1. Add tests to testsuite:
-	a. no init
-	b. no exit
-	c. trace on
-	d. multi-threaded
-	e. forked
+	a. multi-threaded
+	b. forked
 2. Compare performance with log4c, zlog(HardySimpson), pantheios,
 logprintf and zlog(zma)
 3. Check race conditions using some tool like Valgrind.

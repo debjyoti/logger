@@ -5,6 +5,12 @@
 # Without Optimizations: Using the local file logger_without*
 
 unset DISABLE_OPTIMIZATIONS
+unset DISABLE_PRINTING
+
+echo
+echo "Compiling compute_and_print.c without any prints"
+gcc -DDISABLE_PRINTING -O0 -g compute_and_print.c -o compute_no_print
+
 echo
 echo "Compiling compute_and_print.c with ../../src/logger.c"
 gcc -O0 -g -c compute_and_print.c -o compute_and_print.o
@@ -23,6 +29,7 @@ rm bin/* out/*
 
 echo
 echo "Moving the binaries to bin/ folder"
+mv compute_no_print bin/
 mv compute_and_print bin/
 mv compute_and_print_no_opt bin/
 
@@ -35,15 +42,36 @@ echo "cd to bin folder"
 cd bin/
 
 echo
+echo 'Start executing 10 times'
+
+for i in {1..10}; do
+echo
+echo "=======================Iteration $i========================="
+
+echo
+echo "Executing compute_no_print: Just to check computation time"
+echo '----------------------------------------------------------'
+echo "Executing compute_no_print: Just to check computation time" >> ../out/compute_no_print.out
+echo '----------------------------------------------------------' >> ../out/compute_no_print.out
+./compute_no_print >> ../out/compute_no_print.out
+
+echo
 echo "Executing compute_and_print with optimizations"
 echo '----------------------------------------------'
-./compute_and_print
+echo "Executing compute_and_print with optimizations" >> ../out/compute_and_print.out
+echo '----------------------------------------------' >> ../out/compute_and_print.out
+./compute_and_print >> ../out/compute_and_print.out
 
 echo
 echo "Executing compute_and_print without optimizations"
 echo '-------------------------------------------------'
-./compute_and_print_no_opt
+echo "Executing compute_and_print without optimizations" >> ../out/compute_and_print_no_opt.out
+echo '-------------------------------------------------' >> ../out/compute_and_print_no_opt.out
+./compute_and_print_no_opt >> ../out/compute_and_print_no_opt.out
 
-echo
-echo "Moving out of bin"
+done;
+
 cd ../
+echo
+echo "Done. Check the files in ./out"
+echo

@@ -4,10 +4,12 @@
 #include <time.h>
 #include <sys/time.h>
 
+#ifndef DISABLE_PRINTING
 #ifdef DISABLE_OPTIMIZATIONS
 #include "logger_without_optimizations.h"
 #else
 #include "../../src/logger.h"
+#endif
 #endif
 
 #define PI 3.14
@@ -61,21 +63,29 @@ int main( int argc, char* argv[])
     else 
         loop_till = 4096; 
 
-    printf("Executing %d computations and %d prints\n", loop_till,
+    printf("Executing %d computations \n", loop_till,
             loop_till*2);
 
+#ifndef DISABLE_PRINTING
 #ifdef DISABLE_OPTIMIZATIONS
     log_init("../out/compute_and_print_no_opt.log");
 #else
     log_init("../out/compute_and_print.log");
 #endif
+#endif
     for( msg_count=1; msg_count<=loop_till; msg_count++)
     {
+#ifndef DISABLE_PRINTING
         log_print(INFO, "sin_val = %lf, degree = %lf\n", d1, degree);
+#endif
         ret_val = do_some_computation(&d1, &degree);
+#ifndef DISABLE_PRINTING
         log_print(INFO, "Ret sin_val = %lf\n", ret_val);
+#endif
     }
+#ifndef DISABLE_PRINTING
     log_exit();
+#endif
 
     cpu_ticks = clock();
     gettimeofday(&endtime, NULL);
@@ -83,6 +93,10 @@ int main( int argc, char* argv[])
         (double)(endtime.tv_usec-starttime.tv_usec)/1000000;
 
     printf("cpu_ticks = %d, ticks per second = %d, cpu-seconds = %lf,\
+    elapsed clocktime = %lf \n", (int)cpu_ticks,
+            CLOCKS_PER_SEC, (double)cpu_ticks/CLOCKS_PER_SEC,
+            elapsed_clocktime);
+    fprintf(stderr, "cpu_ticks = %d, ticks per second = %d, cpu-seconds = %lf,\
     elapsed clocktime = %lf \n", (int)cpu_ticks,
             CLOCKS_PER_SEC, (double)cpu_ticks/CLOCKS_PER_SEC,
             elapsed_clocktime);
