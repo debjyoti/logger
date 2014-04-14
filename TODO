@@ -11,4 +11,3 @@ logprintf and zlog(zma)
 pthread_yield() or sleep(1)?
 8. If debug is set, use mutex ERRORCHECK, to find any deadlock
 situations.
-9. Add rc checks everywhere.

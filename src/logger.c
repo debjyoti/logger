@@ -41,12 +41,11 @@ static void _handle_error_en(int en, char* msg)
 
 static int _get_current_time(char* str, int max_len)
 {
-    struct timeval *epoch_time;
+    struct timeval epoch_time;
     struct tm *local_time;
     int time_str_len;
-    epoch_time = (struct timeval *)malloc(sizeof(struct timeval));
-    gettimeofday(epoch_time, NULL);
-    local_time = localtime(&(epoch_time->tv_sec));
+    gettimeofday(&epoch_time, NULL);
+    local_time = localtime(&(epoch_time.tv_sec));
     time_str_len=strftime(str, max_len, "%H:%M:%S - ", local_time);
     if(!time_str_len) /* 0 when max_len is shorter than format */
     {
@@ -69,10 +68,11 @@ static void _print_to_screen(char const* fmt, ...)
     fflush(stdout);
 }
 
-/* Logger thread will be executing this function CAUTION: Any
- * function invoked from within _logger_thread must be thread-safe.
- * Currently only printf, malloc, fopen, fclose and fflush are
- * used, which are thread safe (though not reentrant). */
+/* Logger thread will be executing this function.
+ * CAUTION: Any function invoked from within _logger_thread must be
+ * thread-safe.  Currently only printf, malloc, fopen, fclose and
+ * fflush are used, which are thread safe (though not reentrant).
+ */
 void* _logger_thread(void * filepath)
 {
     FILE *fp_log;
@@ -97,7 +97,7 @@ void* _logger_thread(void * filepath)
         /*COND_WAIT will unlock mutex and wait for signal.
           when it will receive signal, it will lock the 
           mutex and continue. But sometimes there can be 
-          false signal. Hence, the cond_var while loop is 
+          false signal. Hence, the g_signal while loop is
           used. */
         while (g_signal == NO_SIGNAL) { 
             pthread_cond_wait(&g_log_cond,
@@ -136,6 +136,7 @@ void* _logger_thread(void * filepath)
         }
         g_signal = NO_SIGNAL;
     }
+    /* control will never reach here. Anyway, let me put these */
     fclose(fp_log);
     pthread_mutex_unlock(&g_log_mutex);
     return (void*)NULL;
@@ -144,7 +145,7 @@ void* _logger_thread(void * filepath)
 void log_enable_trace()
 {
     pthread_mutex_lock(&g_log_mutex);
-    g_log_buffer_flush_size = 1;
+    g_log_buffer_flush_size = 1; /* no buffering */
     g_trace_on = YES;
     pthread_mutex_unlock(&g_log_mutex);
 }
@@ -208,9 +209,13 @@ static int _wait_for_logger_thread()
         pthread_mutex_unlock(&g_log_mutex);
         sched_yield();
         yield_count++;
+        if(yield_count == _MAX_YIELD_WAIT)
+            sleep(2);
         if(yield_count > _MAX_YIELD_WAIT)
         {
-            _handle_error_en(-5, "Logger thread is hung\n");
+            _print_to_screen("WARNING: Logger thread is hung.\
+            Some log messages will not be printed.\n");
+            return -1;
         }
         pthread_mutex_lock(&g_log_mutex);
     }
@@ -225,10 +230,6 @@ static int _wait_for_logger_thread()
 static inline void _signal_logger_thread(enum_signal sig)
 {
     pthread_mutex_lock(&g_log_mutex);
-
-    int to_yield = 0;
-    if(g_trace_on)
-        to_yield = 1;
 
     /* Race Condition: Logger thread might not have processed the
      * previous signal yet */
@@ -260,7 +261,7 @@ static inline void _signal_logger_thread(enum_signal sig)
     g_signal = sig;
     pthread_cond_signal(&g_log_cond);
     pthread_mutex_unlock(&g_log_mutex);
-    if(to_yield)
+    if(g_trace_on)
         sched_yield();
 }
 
@@ -291,35 +292,48 @@ void log_print(log_level lvl, char const* fmt, ...)
             break;
     }
 
-    /* Print variable parameters to va_buffer. The length of
-     * va_buffer should be MAX_LEN - prefix_length. But malloc and
-     * free would be expensive. So I am using MAX_LEN here, but
-     * using MAX_LEN-prefix_length while doing the strncat. So all
-     * good ;-D Could have used VLA. But VLA internally takes up
-     * extra space. So, why bother so much about 10 chars? */
+    /* Print variable parameters to tmp_buffer:
+     * The length of va_buffer should be MAX_LEN - prefix_length.
+     * But malloc and free would be expensive. So I am using
+     * MAX_LEN here, but using MAX_LEN-prefix_length while doing
+     * the strncat. So all good ;-D */
     char va_buffer[LOG_BUFFER_STR_MAX_LEN];
     va_list va;
     va_start(va, fmt);
     vsnprintf(va_buffer, LOG_BUFFER_STR_MAX_LEN, fmt, va);
     va_end(va);
-
     strncat(tmp_buffer, va_buffer,
             LOG_BUFFER_STR_MAX_LEN-prefix_length);
 
+    /* Copy tmp_buffer to global log buffer */
     pthread_mutex_lock(&g_log_mutex);
 	strncpy(g_log_buffer[g_log_buffer_fill], tmp_buffer,
 			LOG_BUFFER_STR_MAX_LEN);
     g_log_buffer_fill++;
     if(g_log_buffer_fill == g_log_buffer_flush_size)
+    {
         print_to_file = 1;
+    }
     else if(g_log_buffer_fill >= LOG_BUFFER_SIZE)
+    /* Check global log buffer overflow:
+     * Why overflow?
+     * Because, when a signal is sent to the logger thread, we do
+     * not wait for the logger thread to finish processing. We
+     * simply carry on putting more stuff in the log buffer, and
+     * wait only when there is an overflow.*/
     {
 #ifdef _LOG_DEBUG
         _print_to_screen("Buffer size overflow. Buffer=%d. Max=%d\
         Gonna Wait", g_log_buffer_fill, LOG_BUFFER_SIZE);
 #endif
         pthread_mutex_unlock(&g_log_mutex);
-        _wait_for_logger_thread();
+        if (_wait_for_logger_thread() == -1)
+        /* error in wait. will overwrite log buffer */
+        {
+            pthread_mutex_lock(&g_log_mutex);
+            g_log_buffer_fill = 0;
+            pthread_mutex_unlock(&g_log_mutex);
+        }
         pthread_mutex_lock(&g_log_mutex);
     }
     pthread_mutex_unlock(&g_log_mutex);
