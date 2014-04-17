@@ -33,6 +33,7 @@ double do_some_computation(double *d1, double *degree)
             b[i][j]=*d1;
         }
     for(i=0;i<MATRIX_SIZE;i++)
+    {
         for(j=0;j<MATRIX_SIZE;j++)
         {
             sum = 0;
@@ -40,6 +41,10 @@ double do_some_computation(double *d1, double *degree)
                 sum = sum + a[i][k] * b[k][j];
             c[i][j]=sum;
         }
+#ifndef DISABLE_PRINTING
+        log_print(INFO, "sum = %lf\n", sum);
+#endif
+    }
     for(i=0;i<MATRIX_SIZE;i++)
         for(j=0;j<MATRIX_SIZE;j++)
            ret+=c[i][j]; 
@@ -76,10 +81,13 @@ int main( int argc, char* argv[])
     for( msg_count=1; msg_count<=loop_till; msg_count++)
     {
 #ifndef DISABLE_PRINTING
-        log_print(INFO, "sin_val = %lf, degree = %lf\n", d1, degree);
+        log_print(INFO, "sin_val = %lf\n", degree);
+        log_print(INFO, "degree = %lf\n", degree);
 #endif
         ret_val = do_some_computation(&d1, &degree);
 #ifndef DISABLE_PRINTING
+        log_print(INFO, "Computation completed for iteration %d\n",
+                msg_count);
         log_print(INFO, "Ret sin_val = %lf\n", ret_val);
 #endif
     }

@@ -4,6 +4,10 @@
 # With Optimizations: Using the logger.c from src
 # Without Optimizations: Using the local file logger_without*
 
+#set -o verbose
+set -o nounset
+set -o errexit
+
 unset DISABLE_OPTIMIZATIONS
 unset DISABLE_PRINTING
 
@@ -53,21 +57,21 @@ echo "Executing compute_no_print: Just to check computation time"
 echo '----------------------------------------------------------'
 echo "Executing compute_no_print: Just to check computation time" >> ../out/compute_no_print.out
 echo '----------------------------------------------------------' >> ../out/compute_no_print.out
-./compute_no_print >> ../out/compute_no_print.out
+time ./compute_no_print >> ../out/compute_no_print.out
 
 echo
 echo "Executing compute_and_print with optimizations"
 echo '----------------------------------------------'
 echo "Executing compute_and_print with optimizations" >> ../out/compute_and_print.out
 echo '----------------------------------------------' >> ../out/compute_and_print.out
-./compute_and_print >> ../out/compute_and_print.out
+time ./compute_and_print >> ../out/compute_and_print.out
 
 echo
 echo "Executing compute_and_print without optimizations"
 echo '-------------------------------------------------'
 echo "Executing compute_and_print without optimizations" >> ../out/compute_and_print_no_opt.out
 echo '-------------------------------------------------' >> ../out/compute_and_print_no_opt.out
-./compute_and_print_no_opt >> ../out/compute_and_print_no_opt.out
+time ./compute_and_print_no_opt >> ../out/compute_and_print_no_opt.out
 
 done;
 
