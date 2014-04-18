@@ -1,13 +1,11 @@
-1. Add tests to testsuite:
+[ ] Add tests to testsuite:
 	a. multi-threaded
 	b. forked
-2. Compare performance with log4c, zlog(HardySimpson), pantheios,
-logprintf and zlog(zma)
-3. Check race conditions using some tool like Valgrind.
-4. Check memory leaks using some tool.
-5. How to flush buffer in case of sudden exit due to error.
-6. Handle signals. Flush buffer when ctrl^c is done.
-7. Test if sched_yield works in AIX. Or should I use
-pthread_yield() or sleep(1)?
-8. If debug is set, use mutex ERRORCHECK, to find any deadlock
-situations.
+[X] Compare performance with log4c, zlog(HardySimpson)
+[ ] Compare performance with pantheios
+[ ] Check race conditions using some tool like Valgrind.
+[ ] Check memory leaks using some tool.
+[ ] How to flush buffer in case of sudden exit due to error.
+[ ] Handle signals. Flush buffer when ctrl^c is done.
+[ ] Test if sched_yield works in AIX. Or should I use pthread_yield() or sleep(1)?
+[ ] If debug is set, use mutex ERRORCHECK, to find any deadlock situations.

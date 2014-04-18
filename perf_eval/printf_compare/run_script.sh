@@ -13,23 +13,23 @@ unset DISABLE_PRINTING
 
 echo
 echo "Compiling compute_and_print.c without any prints"
-gcc -DDISABLE_PRINTING -O0 -g compute_and_print.c -o compute_no_print
+gcc -DDISABLE_PRINTING -O0 -g compute_and_print.c -o compute_no_print -lm
 
 echo
 echo "Compiling compute_and_print.c with ../../src/logger.c"
 gcc -O0 -g -c compute_and_print.c -o compute_and_print.o
 gcc -O0 -c ../../src/logger.c -o logger.o
-gcc -D_THREAD_SAFE -g compute_and_print.o logger.o -o compute_and_print -lpthread
+gcc -D_THREAD_SAFE -g compute_and_print.o logger.o -o compute_and_print -lpthread -lm
 
 echo
 echo "Compiling compute_and_print.c with logger_without_optimizations.c"
 gcc -O0 -DDISABLE_OPTIMIZATIONS -g -c compute_and_print.c -o compute_and_print.o
-gcc -O0 -c logger_without_optimizations.c -o logger_without_optimizations.o  
-gcc -g compute_and_print.o logger_without_optimizations.o -o compute_and_print_no_opt 
+gcc -O0 -c ../logger_without_optimizations.c -o logger_without_optimizations.o  
+gcc -g compute_and_print.o logger_without_optimizations.o -o compute_and_print_no_opt  -lm
 
 echo
 echo "Cleaning the bin and out directories"
-rm bin/* out/*
+rm bin/* out/* || true
 
 echo
 echo "Moving the binaries to bin/ folder"

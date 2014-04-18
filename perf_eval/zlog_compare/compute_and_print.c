@@ -4,16 +4,16 @@
 #include <time.h>
 #include <sys/time.h>
 
-#ifndef DISABLE_PRINTING
-#ifdef DISABLE_OPTIMIZATIONS
+#ifdef DISABLE_ZLOG
 #include "../logger_without_optimizations.h"
 #else
-#include "../../src/logger.h"
-#endif
+#include "zlog.h"
+zlog_category_t* mycat = NULL;
 #endif
 
 #define PI 3.14
 #define MATRIX_SIZE 100
+
 
 double do_some_computation(double *d1, double *degree)
 {
@@ -33,9 +33,12 @@ double do_some_computation(double *d1, double *degree)
 			a[i][j]=*degree;
 			b[i][j]=*d1;
 		}
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 		log_print(INFO, "a[%d][%d] = %lf\n", i, j, a[i][j]);
 		log_print(INFO, "b[%d][%d] = %lf\n", i, j, b[i][j]);
+#else
+		zlog_info(mycat, "a[%d][%d] = %lf", i, j, a[i][j]);
+		zlog_info(mycat, "b[%d][%d] = %lf", i, j, b[i][j]);
 #endif
 	}
 	for(i=0;i<MATRIX_SIZE;i++)
@@ -47,8 +50,10 @@ double do_some_computation(double *d1, double *degree)
 				sum = sum + a[i][k] * b[k][j];
 			c[i][j]=sum;
 		}
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 		log_print(INFO, "sum = %lf\n", sum);
+#else
+		zlog_info(mycat, "sum = %lf", sum);
 #endif
 	}
 	for(i=0;i<MATRIX_SIZE;i++)
@@ -57,8 +62,10 @@ double do_some_computation(double *d1, double *degree)
 		{
 			ret+=c[i][j]; 
 		}
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 		log_print(INFO, "i=%d, ret=%lf\n", i, ret);
+#else
+		zlog_info(mycat, "i=%d, ret=%lf", i, ret);
 #endif
 	}
 	return ret;
@@ -84,28 +91,35 @@ int main( int argc, char* argv[])
 	printf("Executing %d computations \n", loop_till,
 			loop_till*2);
 
-#ifndef DISABLE_PRINTING
-#ifdef DISABLE_OPTIMIZATIONS
-	log_init("../out/compute_and_print_no_opt.log");
+#ifdef DISABLE_ZLOG
+	log_init("compute_and_print_no_opt.log");
 #else
-	log_init("../out/compute_and_print.log");
-#endif
+	zlog_init("compute_and_print.conf");
+	mycat = zlog_get_category("compute_and_print_category");
 #endif
 	for( msg_count=1; msg_count<=loop_till; msg_count++)
 	{
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 		log_print(INFO, "sin_val = %lf\n", degree);
 		log_print(INFO, "degree = %lf\n", degree);
+#else
+		zlog_info(mycat, "sin_val = %lf", degree);
+		zlog_info(mycat, "degree = %lf", degree);
 #endif
 		ret_val = do_some_computation(&d1, &degree);
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 		log_print(INFO, "Computation completed for iteration %d\n",
 				msg_count);
 		log_print(INFO, "Ret sin_val = %lf\n", ret_val);
+#else
+		zlog_info(mycat, "Computation completed for iteration %d", msg_count);
+		zlog_info(mycat, "Ret sin_val = %lf", ret_val);
 #endif
 	}
-#ifndef DISABLE_PRINTING
+#ifdef DISABLE_ZLOG
 	log_exit();
+#else
+	zlog_fini();
 #endif
 
 	cpu_ticks = clock();

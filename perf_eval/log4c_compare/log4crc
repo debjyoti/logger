@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE log4c SYSTEM "">
+
+<log4c version="1.2.4">
+
+	<config>
+		<bufsize>0</bufsize>
+		<debug level="2"/>
+		<nocleanup>0</nocleanup>
+		<reread>1</reread>
+	</config>
+
+	<category name="root" priority="notice"/>
+
+	<rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="1000000000" maxnum="10" />
+
+	<appender name="myrollingfileappender" type="rollingfile" logdir="." prefix="compute_and_print.log" layout="basic" rollingpolicy="myrollingpolicy" />
+	
+	<appender name="stdout" type="stream" layout="basic"/>
+	<appender name="stderr" type="stream" layout="dated"/>
+
+	<layout name="basic" type="basic"/>
+	<layout name="dated" type="dated"/>
+	
+	<category name="test_cat" priority="notice" appender="myrollingfileappender" />
+
+</log4c>

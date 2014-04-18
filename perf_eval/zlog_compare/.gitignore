@@ -1,0 +1,4 @@
+compute_and_print_no_opt
+compute_and_print
+*.out
+*.log*
