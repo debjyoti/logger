@@ -28,7 +28,7 @@ rm *.o *.out *.log* || true
 echo
 echo 'Start executing 10 times'
 
-for i in {1..2}; do
+for i in {1..10}; do
 
 rm *.log* || true
 
